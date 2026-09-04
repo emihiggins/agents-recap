@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>agent-recap</title><style>
+:root{
+  --paper:#f7f8fa; --panel:#fff; --panel-2:#f2f4f7;
+  --rule:#dde2e8;
+  --ink:#101720; --ink-2:#57636f; --ink-3:#8b97a3;
+  --wait:#b3261e; --wait-bg:#fdf3f2; --wait-rule:#e8b4b0;
+  --run:#0b6e4f; --run-bg:#f1f8f4;
+  --open:#7a5200; --open-bg:#fbf6ea;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;color:var(--ink);background:var(--paper);font:15px/1.6 var(--sans)}
+.wrap{max-width:1060px;margin:0 auto;padding:40px 24px 72px}
+
+/* ---- masthead ---- */
+.mast{display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px;
+  border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:0}
+h1{margin:0;font:600 20px/1.2 var(--sans);letter-spacing:-.015em}
+.clock{margin-left:auto;font:400 12px/1 var(--mono);color:var(--ink-2);
+  font-variant-numeric:tabular-nums}
+.tally{display:flex;flex-wrap:wrap;gap:0;margin:0 0 26px;
+  border:1px solid var(--rule);border-top:0;background:var(--panel)}
+.tally div{padding:9px 14px;border-right:1px solid var(--rule);
+  font:400 12px/1.35 var(--mono);color:var(--ink-2)}
+.tally div:last-child{border-right:0}
+.tally b{display:block;font:600 17px/1.2 var(--mono);color:var(--ink);
+  font-variant-numeric:tabular-nums}
+.tally div.hot b{color:var(--wait)}
+
+/* ---- the one loud element: what is waiting on you ---- */
+.alert{border:1px solid var(--wait-rule);border-left:4px solid var(--wait);
+  background:var(--wait-bg);padding:14px 18px;margin:0 0 24px;border-radius:3px}
+.alert h2{margin:0 0 8px;font:600 13px/1 var(--mono);color:var(--wait)}
+.alert ul{margin:0;padding:0;list-style:none;display:grid;gap:5px}
+.alert li{font:400 13.5px/1.5 var(--sans);color:var(--ink)}
+.alert .who{font:600 13px/1 var(--mono)}
+.alert .held{font:400 12.5px/1 var(--mono);color:var(--wait);
+  font-variant-numeric:tabular-nums}
+.allclear{border:1px solid var(--rule);border-left:4px solid var(--run);
+  background:var(--run-bg);padding:12px 18px;margin:0 0 24px;border-radius:3px;
+  font:400 13.5px/1.5 var(--sans);color:var(--ink-2)}
+.allclear b{font:600 13px/1 var(--mono);color:var(--run)}
+
+/* ---- filters ---- */
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.filters button{
+  font:400 12px/1 var(--mono);color:var(--ink-2);background:var(--panel);
+  border:1px solid var(--rule);border-radius:3px;padding:6px 11px;cursor:pointer}
+.filters button:hover{border-color:var(--ink-3);color:var(--ink)}
+.filters button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.filters button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);
+  color:#fff}
+
+/* ---- project rows ---- */
+.board{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:104px 1fr;
+  background:var(--panel);border:1px solid var(--rule);
+  border-left:3px solid var(--ink-3);border-radius:3px}
+.row[data-state=waiting]{border-left-color:var(--wait);border-color:var(--wait-rule)}
+.row[data-state=running]{border-left-color:var(--run)}
+.row[data-state=unfinished]{border-left-color:var(--open)}
+.row.hidden{display:none}
+
+.gutter{padding:14px 12px;border-right:1px solid var(--rule);
+  font:400 11.5px/1.45 var(--mono);color:var(--ink-2)}
+.gutter .state{display:block;color:var(--ink)}
+.gutter .elapsed{display:block;color:var(--ink-3);
+  font-variant-numeric:tabular-nums}
+.row[data-state=waiting] .gutter .state{color:var(--wait);font-weight:600}
+.row[data-state=running] .gutter .state{color:var(--run)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:currentColor;margin-right:5px;vertical-align:1px}
+.row[data-state=waiting] .dot{animation:blink 1.6s steps(2,end) infinite}
+@keyframes blink{50%{opacity:.2}}
+
+.body{padding:13px 16px 14px;min-width:0}
+.head{display:flex;flex-wrap:wrap;align-items:baseline;gap:9px}
+.name{font:600 16px/1.25 var(--sans);letter-spacing:-.01em}
+.tool{font:400 11px/1 var(--mono);color:var(--ink-2);background:var(--panel-2);
+  border:1px solid var(--rule);border-radius:2px;padding:3px 6px}
+.path{margin:3px 0 0;font:400 11.5px/1.5 var(--mono);color:var(--ink-3);
+  word-break:break-all}
+.subject{margin:8px 0 0;font:400 13px/1.5 var(--sans);color:var(--ink-2)}
+.recap{margin:7px 0 0;max-width:72ch}
+.next{margin:11px 0 0;display:grid;grid-template-columns:auto 1fr;gap:10px;
+  align-items:baseline;background:var(--open-bg);border-radius:3px;padding:8px 11px}
+.next dt{font:600 11px/1.5 var(--mono);color:var(--open)}
+.next dd{margin:0;font:400 13.5px/1.5 var(--sans)}
+
+/* key=value machine facts, in the vein of process output */
+.facts{margin:12px 0 0;display:flex;flex-wrap:wrap;gap:4px 14px;
+  font:400 11.5px/1.6 var(--mono);color:var(--ink-3);
+  border-top:1px solid var(--rule);padding-top:9px}
+.facts span b{font-weight:400;color:var(--ink-2)}
+
+/* ---- work items ---- */
+.worklabel{margin:13px 0 6px;font:400 11px/1 var(--mono);color:var(--ink-3);
+  display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
+.worklabel .doc{color:#a3adb8}
+.work{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.work li{display:grid;grid-template-columns:78px 1fr;gap:10px;
+  font:400 13.5px/1.5 var(--sans);align-items:baseline}
+.work .flag{font:400 10.5px/1.7 var(--mono);color:var(--ink-3);
+  border:1px solid var(--rule);border-radius:2px;text-align:center;
+  background:var(--panel-2)}
+.work li.in_progress .flag{color:var(--open);border-color:#e0d0a8;
+  background:var(--open-bg)}
+.work li.completed .flag{color:var(--ink-3)}
+.work li.completed .text{color:var(--ink-3);text-decoration:line-through}
+.work li.unverified .flag{border-style:dashed;color:var(--ink-3)}
+
+/* ---- disclosures ---- */
+details{margin-top:12px}
+summary{cursor:pointer;font:400 11.5px/1 var(--mono);color:var(--ink-3);
+  list-style:none;padding:3px 0}
+summary::-webkit-details-marker{display:none}
+summary:hover{color:var(--ink-2)}
+summary:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+summary::before{content:"[+] "}
+details[open] summary::before{content:"[-] "}
+.sub{display:grid;gap:10px;margin-top:8px;padding-left:14px;
+  border-left:1px solid var(--rule)}
+.sub .shead{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;
+  font:400 11.5px/1.5 var(--mono);color:var(--ink-3)}
+.sub .srecap{font:400 13px/1.5 var(--sans);color:var(--ink-2);max-width:72ch}
+.trimmed{font:400 11.5px/1.5 var(--mono);color:var(--ink-3)}
+.more{margin:4px 0 0;font:400 11.5px/1.5 var(--mono);color:var(--ink-3)}
+.tail{margin-top:8px;background:var(--panel-2);border:1px solid var(--rule);
+  border-radius:3px;padding:10px 12px;white-space:pre-wrap;overflow:auto;
+  max-height:280px;font:400 12px/1.6 var(--mono);color:var(--ink-2)}
+.tail .who{display:block;margin-bottom:5px;color:var(--ink-3)}
+
+.empty{background:var(--panel);border:1px solid var(--rule);border-radius:3px;
+  padding:32px;text-align:center;color:var(--ink-2)}
+.empty code,.foot code{font:400 12.5px/1 var(--mono);background:var(--panel-2);
+  border:1px solid var(--rule);border-radius:2px;padding:2px 5px}
+.foot{margin-top:28px;padding-top:12px;border-top:1px solid var(--rule);
+  font:400 11.5px/1.7 var(--mono);color:var(--ink-3);
+  display:flex;flex-wrap:wrap;gap:4px 16px}
+
+@media (max-width:640px){
+  .wrap{padding:24px 16px 56px}
+  .row{grid-template-columns:1fr}
+  .gutter{border-right:0;border-bottom:1px solid var(--rule);
+    display:flex;gap:10px;padding:10px 14px}
+  .work li{grid-template-columns:1fr;gap:1px}
+  .work .flag{justify-self:start;padding:0 6px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style></head>
+<body><div class="wrap">
+<div class="mast"><h1>Where you left off</h1><span class="clock">thu 3 sep · 7:18 pm</span></div>
+<div class="tally"><div><b>5</b>projects</div><div><b>6</b>sessions</div><div class='hot'><b>1</b>waiting on you</div><div><b>2</b>running</div><div><b>3</b>unfinished work</div></div>
+<div class="alert"><h2>waiting on you</h2><ul><li><span class="who">storefront-web</span> needs permission to run the migration <span class="held">11m so far</span></li></ul></div>
+<div class="filters"><button data-filter="all" aria-pressed="true">all 5</button><button data-filter="waiting" aria-pressed="false">waiting 1</button><button data-filter="running" aria-pressed="false">running 2</button><button data-filter="open" aria-pressed="false">unfinished 3</button><button data-filter="claude-code" aria-pressed="false">claude code 3</button><button data-filter="cursor" aria-pressed="false">cursor 2</button><button data-filter="vscode" aria-pressed="false">vs code 1</button></div>
+<div class="board"><article class="row" data-state="waiting" data-tools="claude-code cursor" data-open="1"><div class="gutter"><span class="state"><span class="dot"></span>waiting</span><span class="elapsed">11m</span></div><div class="body"><div class="head"><span class="name">storefront-web</span><span class="tool">claude code</span><span class="tool">cursor</span></div><p class="path">~/code/storefront-web</p><p class="subject">checkout: coupon stacking returns the wrong total</p><p class="recap">Traced the wrong order total to discounts being applied per line item instead of once per cart, so stacked coupons compounded. Rewrote the reducer to fold coupons into a single cart-level adjustment and added a regression test for two overlapping percentage coupons.</p><dl class="next"><dt>pick up here</dt><dd>Approve the migration so the backfill can run against staging.</dd></dl><div class="facts"><span><b>branch</b>=fix/coupon-stacking-total</span><span><b>uncommitted</b>=6</span><span><b>unpushed</b>=2</span><span><b>messages</b>=173</span><span><b>sessions</b>=2</span><span><b>model</b>=claude-opus-5</span></div><div class="worklabel"><span>tracked by the agent, 2/5 done</span></div><ul class="work"><li class="in_progress"><span class="flag">in progress</span><span class="text">backfill historical orders with corrected totals</span></li><li class="pending"><span class="flag">pending</span><span class="text">check the tax line still rounds after the change</span></li><li class="pending"><span class="flag">pending</span><span class="text">swap the receipt view over to the shared formatter</span></li></ul><details><summary>1 more session here</summary><div class="sub"><div><div class="shead"><span>cursor</span><span>58m</span><span>pull the price formatter into a shared helper</span></div><p class="srecap">Extracted the currency formatter used by cart, checkout and receipts into one helper so the coupon fix only had to change rounding in a single place.</p><div class="worklabel"><span>tracked by the agent</span></div><ul class="work"><li class="pending"><span class="flag">pending</span><span class="text">swap the receipt view over to the shared formatter</span></li></ul></div></div></details><details><summary>conversation tail</summary><div class="tail"><span class="who">you said</span>the totals still look off for two 10% coupons, can you check the rounding</div><div class="tail"><span class="who">the agent replied</span>The rounding was happening twice -- once per coupon, then again on the cart total. I moved it to a single rounding step at the end. Running the backfill needs the migration applied first; may I run it?</div></details></div></article><article class="row" data-state="running" data-tools="claude-code" data-open="1"><div class="gutter"><span class="state"><span class="dot"></span>busy</span><span class="elapsed">3m</span></div><div class="body"><div class="head"><span class="name">rates-api</span><span class="tool">claude code</span></div><p class="path">~/code/rates-api</p><p class="subject">cache the FX rate lookup</p><p class="recap">The quote endpoint was fetching every currency pair on each request, about 40 upstream calls per quote. Added a 60-second in-process cache keyed by pair and wired a metric so stale-hit rate is visible.</p><dl class="next"><dt>pick up here</dt><dd>Load-test the quote endpoint to confirm the p99 actually drops.</dd></dl><div class="facts"><span><b>branch</b>=perf/fx-rate-cache</span><span><b>uncommitted</b>=3</span><span><b>messages</b>=64</span><span><b>model</b>=claude-sonnet-5</span></div><div class="worklabel"><span>tracked by the agent, 2/3 done</span></div><ul class="work"><li class="in_progress"><span class="flag">in progress</span><span class="text">load-test the quote endpoint at 200 rps</span></li></ul></div></article><article class="row" data-state="unfinished" data-tools="claude-code" data-open="1"><div class="gutter"><span class="state">unfinished</span><span class="elapsed">1d</span></div><div class="body"><div class="head"><span class="name">trailmark-ios</span><span class="tool">claude code</span></div><p class="path">~/code/trailmark-ios</p><p class="subject">offline sync for saved routes</p><p class="recap">Built the local SwiftData store and the queue that replays edits made while offline. Conflict resolution is still last-write-wins, which loses edits when the same route is changed on two devices.</p><dl class="next"><dt>pick up here</dt><dd>Decide the conflict rule for a route edited on two devices, then implement it.</dd></dl><div class="facts"><span><b>branch</b>=feature/offline-route-sync</span><span><b>uncommitted</b>=11</span><span><b>unpushed</b>=4</span><span><b>messages</b>=207</span><span><b>model</b>=claude-opus-5</span></div><div class="worklabel"><span>tracked by the agent, 2/4 done</span></div><ul class="work"><li class="in_progress"><span class="flag">in progress</span><span class="text">conflict resolution beyond last-write-wins</span></li><li class="pending"><span class="flag">pending</span><span class="text">surface a sync-failed state in the UI</span></li></ul><div class="worklabel"><span>plan steps</span><span class="doc">plan-offline-sync.md</span></div><ul class="work"><li class="pending unverified"><span class="flag">unverified</span><span class="text">phase 3: background refresh on app foreground</span></li><li class="pending unverified"><span class="flag">unverified</span><span class="text">phase 4: migrate existing users&#x27; saved routes</span></li></ul><details><summary>conversation tail</summary><div class="tail"><span class="who">you said</span>park this for now, but write down where the conflict logic stands</div><div class="tail"><span class="who">the agent replied</span>Noted. The replay queue is done and tested. The open question is what wins when a route is edited on two devices -- newest timestamp, or a merge of the changed fields. I have not implemented either.</div></details></div></article><article class="row" data-state="idle" data-tools="vscode" data-open="0"><div class="gutter"><span class="state">quiet</span><span class="elapsed">2d</span></div><div class="body"><div class="head"><span class="name">deploy-scripts</span><span class="tool">vs code</span></div><p class="path">~/code/deploy-scripts</p><p class="subject">pin the terraform provider versions</p><p class="recap">Pinned every provider to an exact version and regenerated the lock file so plan output stops drifting between machines.</p><div class="facts"><span><b>branch</b>=main</span><span><b>messages</b>=18</span></div><div class="worklabel"><span>tracked by the agent, 2/2 done</span></div></div></article><article class="row" data-state="idle" data-tools="cursor" data-open="0"><div class="gutter"><span class="state">quiet</span><span class="elapsed">2d</span></div><div class="body"><div class="head"><span class="name">(unknown project)</span><span class="tool">cursor</span></div><p class="subject">regex for parsing the log timestamps</p><p class="recap">One-off help writing a regex to pull ISO timestamps out of a log dump.</p><div class="facts"><span><b>messages</b>=7</span></div></div></article></div>
+<div class="foot"><span>showing 5 of 9 projects</span><span>41 sessions scanned</span><span>96 sessions remembered</span><span>1428 chunks indexed</span><span>search it with <code>agent-recap ask "…"</code></span></div>
+</div><script>
+const buttons=[...document.querySelectorAll('.filters button')];
+buttons.forEach(b=>b.addEventListener('click',()=>{
+  buttons.forEach(o=>o.setAttribute('aria-pressed',String(o===b)));
+  const want=b.dataset.filter;
+  document.querySelectorAll('.row').forEach(row=>{
+    const show = want==='all'
+      || row.dataset.state===want
+      || (row.dataset.tools||'').split(' ').includes(want)
+      || (want==='open' && row.dataset.open==='1');
+    row.classList.toggle('hidden',!show);
+  });
+}));
+</script></body></html>
